@@ -5,7 +5,7 @@ local ErrorFrameworkHandler = BasePlugin:extend()
 local kong = kong
 local ngx = ngx
 local find = string.find
-local lowes = string.lowes
+local lower = string.lower
 local concat = table.concat
 local apim_system_name = kong
 
