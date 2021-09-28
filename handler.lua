@@ -18,7 +18,7 @@ end
 
     -- Utility Function --
 local function is_json_body(content_type)
-    return content_type and find(lower(content_type)), "application/json" , nil , true)
+    return content_type and find(lower(content_type), "application/json" , nil , true)
 end
 
 local function read_json_body(body)
@@ -32,13 +32,13 @@ local function split(s, delimiter)
     for match in (s..delimiter):gmatch("(.-)"..delimiter) do 
         table.insert(splitResult, match);
     end
-    return
+    return splitResult;
 end
 
 local function splitTable(s)
     local splitTableResult = {};
-    for k, v in pairs(s) do 
-        local i, j = string.find(v , "_")
+    for _, v in pairs(s) do 
+        local i, _ = string.find(v , "_")
         splitTableResult[string.sub(v, 1 , i-1)] = string.sub(v, i+1, string.len(v))
     end
     return splitTableResult
@@ -51,17 +51,16 @@ local function transform_json_body(conf, buffered_data)
     local status = tostring(kong.response.get_status())
 
     -- Retrieve default values
-
-
-
+    local defaultErrorType = {}
+    local defaultErrorTypeList = split(conf.defaulterror, ",")	
+    defaultErrorType = splitTable(defaultErrorTypeList)
 
     --- JSON Payload errors ---
-
 if is_json_body(kong.response.get_header("Content-Type")) then
     local json_body = read_json_body(buffered_data)
     local errorType = {}
-    for name, value in inpairs(conf.error.values) do 
-        if string.find(value, ("errorStatus_".. status) then
+    for name, value in ipairs(conf.error.values) do 
+        if string.find(value, ("errorStatus_".. status)) then
             local errorTypeList = split(value, ",")
             errorType = splitTable(errorTypeList)
         end
@@ -69,7 +68,7 @@ if is_json_body(kong.response.get_header("Content-Type")) then
 
     local targetErrorType = {}
     for name, value in ipairs(conf.targeterror.values) do
-        if string.find(value, ("errorStatus_".. status) then
+        if string.find(value, ("errorStatus_".. status)) then
             local targetErrorTypeList = split(value, ",")
             targetErrorType = splitTable(targetErrorTypeList)
         end
@@ -80,8 +79,8 @@ if is_json_body(kong.response.get_header("Content-Type")) then
         system = errorType["system"] or targetErrorType["system"]
     -- no response body ---
         if json_body == nil then
-            error_message = errorType["message"] 
-            error_detail = errorType["detail"]
+            error_message = errorType["message"] or defaultErrorType["message"]
+            error_detail = errorType["detail"] or defaultErrorType["detail"]
 
         else
     -- Retrieve error from the upstream response if required --
