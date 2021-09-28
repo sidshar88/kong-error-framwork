@@ -2,65 +2,112 @@
 
 ## Description
 
-<b>Error Framework</b> is a [Kong](https://getkong.org/) plugin, which allows to define more configurable request limiting, than the built-in Rate Limiting plugin. Consumer Rate Limiting allows to dynamically define different limits for every consumer and API via Kong Admin API. Limits are reset every month.
+<b>Error Framework</b> is a [Kong](https://getkong.org/) plugin, which help customize and unify the error framework across the gateway. You can standardize the error framwork irrespective of how your provider handles their error structures. This plugin can be associated to service/consumer/cluster based on the use case.
 
-| Call count   | Consumer 1 | Consumer 2 | Consumer 3 |
-|--------------|------------|------------|------------|
-| API 1        | 100        | 50         | 1000       |
-| API 2        | 150        | 40         | 500        |
-| API 3        | 50         | 40         | 500        |
+## Error Message format
 
-The above table shows an example configuration you can achieve using this plugin.
 
-### Usage
 
-The plugin can be installed using LuaRocks:
+## Configurations
+### Plugin properties
 
-```
-luarocks install error-framework
-```
+| **Properties**        | **Type**          | **Description**  |
+| ------------- |:-------------:| :-----|
+| error.values   | Array of Strings | *It should follow the below pattern* <br/> errorstatus_{YOUR-ERORR-CODE},message_{YOUR-ERROR-MESSAGE},detail_{YOUR-ERROR-DETAIL},system_{ERROR-ORIGINATING-SYSTEM} <br/> errorstatus_{YOUR-ERORR-CODE},message_{YOUR-ERROR-MESSAGE},detail_{YOUR-ERROR-DETAIL},system_{ERROR-ORIGINATING-SYSTEM} 
+| targeterror.values     | Array of Strings      |   *It should follow the below pattern* <br/> errorstatus_{YOUR-ERORR-CODE},messagepath_{UPSTREAM-ERROR-MESSAGE-JSONPATH},detailpath_{UPSTREAM-ERROR-DETAIL-JSONPATH},system_{UPSTREAM-SYSTEM}<br/> errorstatus_{YOUR-ERORR-CODE},messagepath_{UPSTREAM-ERROR-MESSAGE-JSONPATH},detailpath_{UPSTREAM-ERROR-DETAIL-JSONPATH},system_{UPSTREAM-SYSTEM}
+| defaulterror | string      |   *It should follow the below pattern* <br/> message_{YOUR-DEFAULT-ERROR-MESSAGE},detail_{YOUR-DEFAULT-ERROR-DETAIL}  |
 
-Before starting Kong you need to set the environment variable `KONG_CUSTOM_PLUGINS`:
-```
-export KONG_CUSTOM_PLUGINS=error-framework
-```
 
-To enable the plugin in Kong:
-```
-$ curl -X POST http://kong:8001/plugins \
-    --data "name=error-framework"
-```
+## Description and usage
 
-### Request processing
-This plugin integrates with generic Kong authentication plugins, so you can use any available authorization plugin to identify consumers.
+config.error.values (Optional)
 
-If the plugin gets an authenticated call it looks, if the consumer has a limit defined for the API his calling. If not it look at the default limits. If no limits are defined the call is passed through the plugin.
+This has a very specific format in which you provide the input. Note that this is an array, there can be multiple lines of the same with the different HTTP error codes
 
-In case the consumer already exceeded the call count, the call is not passed to the destination API and a HTTP response with code 429 is send back.
+ errorstatus_{YOUR-ERORR-CODE},message_{YOUR-ERROR-MESSAGE},detail_{YOUR-ERROR-DETAIL},system_{ERROR-ORIGINATING-SYSTEM}
+ Example : errorstatus_401,message_UNAUTHORIZED,detail_Invalid accesss token,system_Upstreamsystem1
 
-## Admin API routes
+Only the details in the curly braces {} should be modified
 
-### POST /consumer-rate-limiting/consumers
-Set limits for consumers.
+{YOUR-ERORR-CODE} - The error code which you want to customize. These are http error codes.
 
-```
-POST /consumer-rate-limiting/consumers
+errorstatus_401
+errorstatus_500
+
+Note : Do not include _ or , in your values as they are used as tokenizers
+
+{YOUR-ERROR-MESSAGE} - Error message you want to supply for the above error code. You can provide the values that correspond to the http error code.
+Example : 
+
+errorstatus_401,message_UNAUTHORIZED
+errorstatus_400,message_BAD REQUEST
+
+Note : Do not include _ or , in your values as they are used as tokenizers
+
+{YOUR-ERROR-DETAIL} - Detailed error mesage for the error code. 
+Example : 
+
+errorstatus_401,message_UNAUTHORIZED,detail_Invalid accesss token
+errorstatus_400,message_BAD REQUEST,detail_Incorrect message_Incorrect payload
+
+Note : Do not include _ or , in your values as they are used as tokenizers
+
+{ERROR-ORIGINATING-SYSTEM} - This value helps determine where the error occurs. Provide the upstream system name here
+
+Example : 
+
+errorstatus_401,message_UNAUTHORIZED,detail_Invalid accesss token,system_Upstreamsystem1
+errorstatus_400,message_BAD REQUEST,detail_Incorrect message_Incorrect payload,system_Upstreamsystem1
+
+
+
+config.targeterror.values  (Optional)
+
+This has a very specific format in which you provide the input. You will be using this if you want to send the upstream error messsage/error detail/custom code back to the consumer. Note that this is an array, there can be multiple lines of the same ,with the different HTTP error codes of the upstream.
+
+ errorstatus_{YOUR-ERORR-CODE},messagepath_{UPSTREAM-ERROR-MESSAGE-JSONPATH},detailpath_{UPSTREAM-ERROR-DETAIL-JSONPATH},system_{UPSTREAM-SYSTEM}
+ Example : errorstatus_401,messagepath_error.title,detail_error.detail,system_Upstreamsystem1
+
+Only the details in the curly braces {} should be modified
+
+{YOUR-ERORR-CODE} - The error code which you want to customize. These are http error codes.
+
+errorstatus_401
+errorstatus_500
+
+Note : Do not include _ or , in your values as they are used as tokenizers
+
+{UPSTREAM-ERROR-MESSAGE-JSONPATH} - Provide the JSON PATH of the error message in your upstream response. This plugin will retrieve  BAD REQUEST from the below payload
+Example : 
+errorstatus_401,messagepath_error[1].title
+
+Note : Do not include _ or , in your values as they are used as tokenizers
+
+{UPSTREAM-ERROR-DETAIL-JSONPATH} - Provide the JSON PATH of the error detail in your upstream response.
+
+Example : 
+errorstatus_401,messagepath_error.title,detail_error.detail
+In the above example the upstream system sends the error message in the below path. This plugin will retrieve  "incoorect payload" from the below payload
 {
-	"consumer_id": "consumer_1"
-    "quotas": [
-    	{
-        	"api_id": "api_1",
-            "quota": 100
-        },
-        {
-        	"api_id": "api_2",
-            "quota": 150
-        },
-        {
-        	"api_id": "api_3",
-            "quota": 50
-        }
-    ]
-}
-```
+    error:
+        detail: "incoorect payload",
+        title: "BAD REQUEST"
 
+}
+
+Note : Do not include _ or , in your values as they are used as tokenizers
+
+{ERROR-ORIGINATING-SYSTEM} - This value helps determine where the error occurs. Provide the upstream system name here
+
+Example : 
+errorstatus_{YOUR-ERORR-CODE},messagepath_{UPSTREAM-ERROR-MESSAGE-JSONPATH},detailpath_{UPSTREAM-ERROR-DETAIL-JSONPATH}
+
+
+
+defaulterror (required)
+
+This is a required parameter, which has similar formating as the above fields. If none of the error matches the plugin will instruct KONG to use the below error message and detail.
+message_{YOUR-DEFAULT-ERROR-MESSAGE},detail_{YOUR-DEFAULT-ERROR-DETAIL} 
+Example : message_Default error message ,detail_default system error
+
+Note : Do not include _ or , in your values as they are used as tokenizers
