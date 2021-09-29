@@ -5,6 +5,7 @@
 <b>Error Framework</b> is a [Kong](https://getkong.org/) plugin, which help customize and unify the error framework across the gateway. You can standardize the error framwork irrespective of how your provider handles their error structures. This plugin can be associated to service/consumer/cluster based on the use case.
 
 ## Error Message format
+![image](https://user-images.githubusercontent.com/45583515/135211399-443abfc8-39a6-4727-ab53-8d992d9ea38a.png)
 
 
 
