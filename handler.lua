@@ -57,26 +57,26 @@ local function transform_json_body(conf, buffered_data)
 -- Retrieve default values
     local defaultErrorTypeList = split(conf.defaulterror, ",")
     local defaultErrorType = splitTable(defaultErrorTypeList)
+    
+    local errorType = {}
+      for name, value in ipairs(conf.error.values) do
+          if string.find(value, ("errorStatus_" .. status)) then
+              local errorTypeList = split(value, ",")
+              errorType = splitTable(errorTypeList)
+          end                    
+      end
+
+      local targetRrrorType = {}
+      for name, value in ipairs(conf.targeterror.values) do
+          if string.find(value, ("errorStatus_" .. status)) then
+              local targetRrrorTypeList = split(value, ",")
+              targetRrrorType = splitTable(targetRrrorTypeList)
+          end                    
+      end    
 
 -- JSON Payloads errors --
     if is_json_body(kong.response.get_header("Content-Type")) then
         local json_body = read_json_body(buffered_data)
-
-        local errorType = {}
-        for name, value in ipairs(conf.error.values) do
-            if string.find(value, ("errorStatus_" .. status)) then
-                local errorTypeList = split(value, ",")
-                errorType = splitTable(errorTypeList)
-            end                    
-        end
-
-        local targetRrrorType = {}
-        for name, value in ipairs(conf.targeterror.values) do
-            if string.find(value, ("errorStatus_" .. status)) then
-                local targetRrrorTypeList = split(value, ",")
-                targetRrrorType = splitTable(targetRrrorTypeList)
-            end                    
-        end
 
         -- Error occured at the upstream application --        
         if kong.response.get_source() == "service" then
@@ -155,7 +155,7 @@ local function transform_json_body(conf, buffered_data)
     local error_body = {}
 
     error_body.traceId= kong.request.get_header("traceid")
-    error_body.timestamp = "timestamp"
+    error_body.timestamp = os.time()
 
     local error = {}
     error.httpCode = status
